@@ -145,27 +145,27 @@ export const createGameMachine = ({ id }: { id: string }) => {
         players: initialPlayers,
         roundsPlayed: 0,
       },
-      initial: "Initial",
+      initial: "idle",
       states: {
-        Initial: {
+        idle: {
           on: {
             START_GAME: {
-              target: "DealHands",
+              target: "dealHands",
               actions: ["shuffleDeck"],
             },
           },
         },
 
-        DealHands: {
+        dealHands: {
           entry: ["nextRound"],
           invoke: {
-            id: "invokeDealHandsToPlayersAndDealer",
+            id: "dealRound",
             src: "dealRound",
             input: ({ context }) => ({
               players: context.players,
             }),
             onDone: {
-              target: "PlayersTurn",
+              target: "encounter",
               actions: assign({
                 activePlayerId: ({ context }) => {
                   console.log({ player: context.players[0] })
@@ -181,11 +181,10 @@ export const createGameMachine = ({ id }: { id: string }) => {
           },
         },
 
-        PlayersTurn: {
-          entry: "setBlackjackHandsAsFinished",
-          initial: "WaitForPlayerAction",
+        encounter: {
+          initial: "idle",
           states: {
-            WaitForPlayerAction: {
+            idle: {
               entry: enqueueActions(({ context }) => {
                 const areAllFinished = context.players.every((player) =>
                   player.hands.every((hand) => hand.isFinished)
@@ -202,76 +201,54 @@ export const createGameMachine = ({ id }: { id: string }) => {
                 },
 
                 STAND: {
-                  target: "FinishedPlayerAction",
+                  target: "checkIfComplete",
                   actions: ["finishHand", "nextPlayer"],
                 },
 
                 END_ENCOUNTER: {
-                  target: "NoMorePlayerActions",
+                  target: "complete",
                 },
               },
             },
 
-            FinishedPlayerAction: {
+            checkIfComplete: {
               always: [
                 {
                   guard: "allPlayersAreFinished",
-                  target: "NoMorePlayerActions",
+                  target: "complete",
                 },
                 {
-                  target: "WaitForPlayerAction",
+                  target: "ready",
                 },
               ],
             },
-            NoMorePlayerActions: {
+            complete: {
               type: "final",
             },
           },
-          onDone: "FinalizeRound",
+          onDone: "results",
         },
 
-        FinalizeRound: {
-          entry: ["setPlayersRoundResult", "finalizePlayersBalance"],
-          initial: "WaitForEventToStartNewRound",
+        results: {
+          // TODO: disperse loot, punish losers
+          entry: ["setRoundResult"],
+          initial: "idle",
 
           states: {
-            WaitForEventToStartNewRound: {
-              after: {
-                0: {
-                  target: "ShuffleDeckBeforeNextDeal",
-                  guard: "shouldShuffleDeck",
-                },
-              },
+            idle: {
+              entry: enqueueActions(({ enqueue, check }) => {
+                if (check("shouldShuffleDeck")) {
+                  enqueue("shuffleDeck")
+                }
+                enqueue("clearForNewRound")
+              }),
               on: {
-                CLEAR_TABLE_ROUND: {
-                  actions: "clearForNewRound",
-                },
-                DEAL_ANOTHER_ROUND: {
-                  actions: "clearForNewRound",
-                  target: "DealHands",
+                RESET: {
+                  target: ".idle",
                 },
               },
-            },
-            ShuffleDeckBeforeNextDeal: {
-              always: {
-                target: "WaitForEventToStartNewRound",
-              },
-              on: {
-                CLEAR_TABLE_ROUND: {
-                  actions: "clearForNewRound",
-                },
-                DEAL_ANOTHER_ROUND: {
-                  actions: ["clearForNewRound"],
-                  target: "DealHands",
-                },
-              },
-              exit: ["shuffleDeck"],
-            },
-            DealHands: {
-              type: "final",
             },
           },
-          onDone: "DealHands",
         },
       },
 
@@ -287,8 +264,7 @@ export const createGameMachine = ({ id }: { id: string }) => {
               playerId: string
             }
           | { type: "END_ENCOUNTER" }
-          | { type: "DEAL_ANOTHER_ROUND" }
-          | { type: "CLEAR_TABLE_ROUND" }
+          | { type: "RESET" }
       },
     },
     {
@@ -368,7 +344,7 @@ export const createGameMachine = ({ id }: { id: string }) => {
           }
         }),
 
-        setPlayersRoundResult: assign({
+        setRoundResult: assign({
           players: ({ context }) => {
             // Create a new array with updated roundResults
             return context.players.map((player) => {
