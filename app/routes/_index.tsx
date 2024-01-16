@@ -38,7 +38,7 @@ export default function Index() {
         </div>
 
         {players.map((player) => (
-          <div key={player.id} className="">
+          <div key={player.id} className="px-4 py-2">
             <h2
               className={`text-xl ${
                 activePlayerId === player.id ? "font-bold" : ""
@@ -48,31 +48,37 @@ export default function Index() {
             </h2>
 
             {player.hands.map((hand, i) => (
-              <div key={i} className="">
-                {hand.cards.map((card, i) => (
-                  <div key={i}>
-                    {card.isVisible ? `${card.value}${card.suit}` : "??"}
-                  </div>
-                ))}
-
-                <div>Value: {getCardsValue(hand.cards)}</div>
-                <div>Status: {hand.roundResult}</div>
-                <div className="flex gap-x-2">
-                  <Button
-                    onClick={() =>
-                      game.send({ type: "HIT", playerId: player.id })
-                    }
-                  >
-                    Hit
-                  </Button>
-                  <Button
-                    onClick={() =>
-                      game.send({ type: "STAND", playerId: player.id })
-                    }
-                  >
-                    Stand
-                  </Button>
+              <div key={i}>
+                <div className="flex gap-x-2 mb-2">
+                  {hand.cards.map((card, i) => (
+                    <div key={i} className="border px-2">
+                      Level {card.level} {card.name}
+                    </div>
+                  ))}
                 </div>
+
+                <div className="mb-2">Value: {getCardsValue(hand.cards)}</div>
+
+                {hand.isFinished ? (
+                  <div>Status: {hand.roundResult}</div>
+                ) : (
+                  <div className="flex gap-x-2">
+                    <Button
+                      onClick={() =>
+                        game.send({ type: "HIT", playerId: player.id })
+                      }
+                    >
+                      Hit
+                    </Button>
+                    <Button
+                      onClick={() =>
+                        game.send({ type: "STAND", playerId: player.id })
+                      }
+                    >
+                      Stand
+                    </Button>
+                  </div>
+                )}
               </div>
             ))}
           </div>

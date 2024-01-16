@@ -1,64 +1,96 @@
 import { assign, createMachine, raise, enqueueActions, and } from "xstate"
+import { shuffle } from "./misc"
 
-const mappedCardValue = {
-  A: 1,
-  "2": 2,
-  "3": 3,
-  "4": 4,
-  "5": 5,
-  "6": 6,
-  "7": 7,
-  "8": 8,
-  "9": 9,
-  "10": 10,
-  T: 10,
-  J: 10,
-  Q: 10,
-  K: 10,
-} as const
-
-export const cardNumbers = [
-  "A",
-  "2",
-  "3",
-  "4",
-  "5",
-  "6",
-  "7",
-  "8",
-  "9",
-  "10",
-  "T",
-  "J",
-  "Q",
-  "K",
+const monsters = [
+  {
+    name: "Imp",
+    level: 1,
+  },
+  {
+    name: "Pixie",
+    level: 2,
+  },
+  {
+    name: "Goblin",
+    level: 3,
+  },
+  {
+    name: "Skeleton",
+    level: 4,
+  },
+  {
+    name: "Orc",
+    level: 5,
+  },
+  {
+    name: "Giant Spider",
+    level: 6,
+  },
+  {
+    name: "Gargoyle",
+    level: 7,
+  },
+  {
+    name: "Mimic",
+    level: 8,
+  },
+  {
+    name: "Ogre",
+    level: 9,
+  },
+  {
+    name: "Minotaur",
+    level: 10,
+  },
+  {
+    name: "Manticore",
+    level: 10,
+  },
+  {
+    name: "Golem",
+    level: 10,
+  },
+  {
+    name: "Dragon",
+    level: 11,
+  },
 ] as const
-export const suits = ["♠", "♥", "♦", "♣"] as const
+
+const loot = [
+  {
+    type: "weapon",
+    name: "Dagger",
+    level: 1,
+    victoryPoints: 0,
+  },
+  {
+    type: "armor",
+    name: "Leather Armor",
+    level: 1,
+    victoryPoints: 0,
+  },
+  {
+    type: "ring",
+    name: "Ring of Protection",
+  },
+  {
+    type: "scroll",
+    name: "Scroll of Fireball",
+  },
+] as const
 
 function initDeck() {
   const deck = []
-  for (const suit of suits) {
-    for (const value of cardNumbers) {
-      deck.push({
-        value,
-        suit,
-        isVisible: false,
-      })
-    }
+  for (const monster of monsters) {
+    deck.push(monster)
+    deck.push(monster)
+    deck.push(monster)
+    deck.push(monster)
   }
   return deck
 }
 
 type Card = ReturnType<typeof initDeck>[number]
-
-function shuffle<T>(arr: Array<T>) {
-  const newArr = arr.slice()
-  for (let i = newArr.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1))
-    ;[newArr[i], newArr[j]] = [newArr[j], newArr[i]]
-  }
-  return newArr
-}
 
 const initialPlayers = [
   {
@@ -222,7 +254,7 @@ export const createGameMachine = ({ id }: { id: string }) => {
             },
             ShuffleDeckBeforeNextDeal: {
               always: {
-                  target: "WaitForEventToStartNewRound",
+                target: "WaitForEventToStartNewRound",
               },
               on: {
                 CLEAR_TABLE_ROUND: {
@@ -323,10 +355,7 @@ export const createGameMachine = ({ id }: { id: string }) => {
                 ...player,
                 hands: player.hands.map((hand, idx) => {
                   if (idx !== player.hands.length - 1) return hand
-                  const newCards = hand.cards.concat({
-                    ...topCard,
-                    isVisible: true,
-                  })
+                  const newCards = hand.cards.concat(topCard)
 
                   return {
                     ...hand,
@@ -502,7 +531,7 @@ export const createGameMachine = ({ id }: { id: string }) => {
 
 export function getCardsValue(cards: Player["hands"][number]["cards"]) {
   return cards.reduce((sum, card) => {
-    return sum + mappedCardValue[card.value]
+    return sum + card.level
   }, 0)
 }
 
