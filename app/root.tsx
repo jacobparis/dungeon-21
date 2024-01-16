@@ -1,5 +1,4 @@
-import { cssBundleHref } from "@remix-run/css-bundle";
-import type { LinksFunction } from "@remix-run/node";
+import type { LinksFunction } from "@remix-run/node"
 import {
   Links,
   LiveReload,
@@ -7,11 +6,24 @@ import {
   Outlet,
   Scripts,
   ScrollRestoration,
-} from "@remix-run/react";
+} from "@remix-run/react"
+import { createGameMachine } from "./gameMachine"
+import { createActorContext } from "@xstate/react"
+import styles from "./tailwind.css"
 
-export const links: LinksFunction = () => [
-  ...(cssBundleHref ? [{ rel: "stylesheet", href: cssBundleHref }] : []),
-];
+export const links: LinksFunction = () => [{ rel: "stylesheet", href: styles }]
+
+const gameMachine = createGameMachine({
+  id: `Dungeon21Machine`,
+})
+
+export const GameMachineContext = createActorContext(gameMachine, {
+  inspect(event) {
+    if (event.type === "@xstate.event") {
+      console.log(event.event)
+    }
+  },
+})
 
 export default function App() {
   return (
@@ -23,11 +35,13 @@ export default function App() {
         <Links />
       </head>
       <body>
-        <Outlet />
+        <GameMachineContext.Provider>
+          <Outlet />
+        </GameMachineContext.Provider>
         <ScrollRestoration />
         <Scripts />
         <LiveReload />
       </body>
     </html>
-  );
+  )
 }
